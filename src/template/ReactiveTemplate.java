@@ -49,21 +49,45 @@ public class ReactiveTemplate implements ReactiveBehavior {
 			List<State> statesInCityA = new ArrayList<State>();
 			
 			for (City cityB : allCities) {
-				State taskState = new State(true, cityA, cityB);
-				statesInCityA.add(taskState);
-				stateProbability.put(taskState, td.probability(cityA, cityB));
-				bestValueInState.put(taskState, INITVALUE);
-				
-				List<AgentAction> stateActionsList = new ArrayList<AgentAction>();
-				AgentAction deliveryAction = new AgentAction(true, cityA, cityB);
-				stateActionsList.add(deliveryAction);
-				double cost = cityA.distanceTo(cityB)*agent.vehicles().get(0).costPerKm();
-				actionReward.put(deliveryAction, td.reward(cityA, cityB) - cost);
-				
-				for (City neighboringCity : cityA.neighbors()) {
+				if (cityB != cityA) {
+					taskTrueProbability += td.probability(cityA, cityB);
+					State taskState = new State(true, cityA, cityB);
+					statesInCityA.add(taskState);
+					stateProbability.put(taskState, td.probability(cityA, cityB));
+					bestValueInState.put(taskState, INITVALUE);
 					
+					List<AgentAction> stateActionsList = new ArrayList<AgentAction>();
+					AgentAction deliveryAction = new AgentAction(true, cityA, cityB);
+					stateActionsList.add(deliveryAction);
+					double cost = cityA.distanceTo(cityB)*agent.vehicles().get(0).costPerKm();
+					actionReward.put(deliveryAction, td.reward(cityA, cityB) - cost);
+					cost = 0;
+					
+					for (City neighboringCity : cityA.neighbors()) {
+						AgentAction noDeliveryAction = new AgentAction(false, cityA, neighboringCity);
+						stateActionsList.add(noDeliveryAction);
+						cost = cityA.distanceTo(neighboringCity)*agent.vehicles().get(0).costPerKm();
+						actionReward.put(noDeliveryAction, -cost);
+					}
+					actionsInState.put(taskState, stateActionsList);
 				}
 			}
+			
+			State noTaskState = new State(false);
+			double noTaskProbability = 1 - taskTrueProbability;
+			statesInCityA.add(noTaskState);
+			stateProbability.put(noTaskState, noTaskProbability);
+			bestValueInState.put(noTaskState, INITVALUE);
+			
+			List<AgentAction> stateActionsList = new ArrayList<AgentAction>();
+			for (City neighboringCity : cityA.neighbors()) {
+				AgentAction noDeliveryAction = new AgentAction(false, cityA, neighboringCity);
+				stateActionsList.add(noDeliveryAction);
+				double cost = cityA.distanceTo(neighboringCity)*agent.vehicles().get(0).costPerKm();
+				actionReward.put(noDeliveryAction, -cost);
+			}
+			actionsInState.put(noTaskState, stateActionsList);
+			statesInCity.put(cityA, statesInCityA);
 		}
 
 		this.random = new Random();
